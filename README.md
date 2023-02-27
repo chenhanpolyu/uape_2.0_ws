@@ -1,5 +1,7 @@
 # uape_2.0_ws
 
+This is Chenhan's uape2.0 planner, which has a mapping module(MLMapping), this version could run on ICUAS competition. 
+While the front-end(Hybrid A*) is not efficient in path searching, further modification is required.
 
 ## FIRST->Requirements: 
 you will need to have the four packages in the workspace as shown in the figure below:
