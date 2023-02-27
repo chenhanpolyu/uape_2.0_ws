@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>    
+
+	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find uape_planner_2)/launch/planning_demo.rviz" required="true" />
+
+
+</launch>
