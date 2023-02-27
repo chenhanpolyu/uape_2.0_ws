@@ -46,3 +46,5 @@ Ros node is shown below:
 And the running scene is shown in below
 
 ![icuas_palnner](https://user-images.githubusercontent.com/59171742/221510875-22b40571-8f39-46e9-916a-b2bbe3230f32.png)
+
+### PS. icuas.rviz could be used to configure the rviz window
