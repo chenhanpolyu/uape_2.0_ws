@@ -703,7 +703,7 @@ inline bool KinodynamicAstar::checkSafety(const Eigen::Vector3d &query_pt, const
 
   else
   {
-    return MLmap->getOccupancy(query_pt, S_r)!=mlmap::OCCUPIED && global_range_safe;
+    return MLmap->getInflateOccupancy(query_pt)!=mlmap::OCCUPIED && global_range_safe;
   }
 
   }
