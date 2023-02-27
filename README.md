@@ -1,17 +1,31 @@
 # uape_2.0_ws
+
+
+## FIRST->Requirements: 
 you will need to have the four packages in the workspace as shown in the figure below:
 
-![uape_2 0_ws](https://user-images.githubusercontent.com/59171742/221505002-1ec91827-7f4e-4658-a9af-7fadae330e67.png)
-
-install steps:
-## step 1: download other 3 packages
+![uape_2 0_ws](https://user-images.githubusercontent.com/59171742/221505002-1ec91827-7f4e-4658-a9af-7fadae330e67.png|width=200)
+## Download other 3 packages,
 ### 1.1 [MLMapping](https://github.com/chenhanpolyu/MLMapping) 
 ### 1.2 [yolo_module](https://github.com/chenhanpolyu/AutoFly-demo/tree/master/src/yolo_fdsst_piv)
 ### 1.3 [px4control](https://github.com/ZJU-FAST-Lab/Fast-Drone-250/tree/master/src/realflight_modules/px4ctrl)
+and put them into the src/ folder in your workspace.
 
-## step 2: mlmapping dependencies:
+## SECOND->Installation
+### step 1: install mlmapping dependencies:
 $ cd uape_2.0_ws/src/MLMapping/3rdPartLib/
 allen:~/uape_2.0_ws/src/MLMapping/3rdPartLib$ ./install3rdPartLib.sh
 
-## step3: in the workspace direcotry:
+## step2: in the workspace direcotry:
 ~/uape_2.0_ws$ catkin_make
+
+## THIRD->How to launch
+allen@allen:~/uape_2.0_ws$ source devel/setup.bash 
+allen@allen:~/uape_2.0_ws$ roslaunch uape_planner_2 icuas_sim_traj_node.launch 
+
+it runs with the docker-Gazebo simulation env provided by ICUAS-2023 competition.
+Ros node is shown below:
+![icuas_rosgraph](https://user-images.githubusercontent.com/59171742/221510752-85ff7544-8dd2-4ff8-89fd-fc39fecf558c.png)
+
+And the running scene is shown in below
+![icuas_palnner](https://user-images.githubusercontent.com/59171742/221510875-22b40571-8f39-46e9-916a-b2bbe3230f32.png)
