@@ -16,6 +16,8 @@ you will need to have the four packages in the workspace as shown in the figure 
 
 #### 1.3 [px4control](https://github.com/ZJU-FAST-Lab/Fast-Drone-250/tree/master/src/realflight_modules/px4ctrl)
 
+##### 1.3.1 [utils](https://github.com/ZJU-FAST-Lab/Fast-Drone-250/tree/master/src/utils) utils also needed to be included in the px4control folder.
+
 and put them into the src/ folder in your workspace.
 
 ## SECOND->Installation
