@@ -26,7 +26,7 @@ allen:~/uape_2.0_ws/src/MLMapping/3rdPartLib$ ./install3rdPartLib.sh
 ## step2: in the workspace direcotry:
 ~/uape_2.0_ws$ catkin_make
 
-## THIRD->How to launch
+## THIRD->Launch
 allen@allen:~/uape_2.0_ws$ source devel/setup.bash 
 
 allen@allen:~/uape_2.0_ws$ roslaunch uape_planner_2 icuas_sim_traj_node.launch 
