@@ -14,6 +14,7 @@ and put them into the src/ folder in your workspace.
 ## SECOND->Installation
 ### step 1: install mlmapping dependencies:
 $ cd uape_2.0_ws/src/MLMapping/3rdPartLib/
+
 allen:~/uape_2.0_ws/src/MLMapping/3rdPartLib$ ./install3rdPartLib.sh
 
 ## step2: in the workspace direcotry:
@@ -21,9 +22,11 @@ allen:~/uape_2.0_ws/src/MLMapping/3rdPartLib$ ./install3rdPartLib.sh
 
 ## THIRD->How to launch
 allen@allen:~/uape_2.0_ws$ source devel/setup.bash 
+
 allen@allen:~/uape_2.0_ws$ roslaunch uape_planner_2 icuas_sim_traj_node.launch 
 
 it runs with the docker-Gazebo simulation env provided by ICUAS-2023 competition.
+
 Ros node is shown below:
 <img src="https://user-images.githubusercontent.com/59171742/221510752-85ff7544-8dd2-4ff8-89fd-fc39fecf558c.png" width="800"
 
