@@ -4,7 +4,7 @@
 ## FIRST->Requirements: 
 you will need to have the four packages in the workspace as shown in the figure below:
 
-<img src="https://user-images.githubusercontent.com/59171742/221505002-1ec91827-7f4e-4658-a9af-7fadae330e67.png"  width="200">
+<img src="https://user-images.githubusercontent.com/59171742/221505002-1ec91827-7f4e-4658-a9af-7fadae330e67.png"  width="500">
 ## Download other 3 packages,
 ### 1.1 [MLMapping](https://github.com/chenhanpolyu/MLMapping) 
 ### 1.2 [yolo_module](https://github.com/chenhanpolyu/AutoFly-demo/tree/master/src/yolo_fdsst_piv)
@@ -25,7 +25,7 @@ allen@allen:~/uape_2.0_ws$ roslaunch uape_planner_2 icuas_sim_traj_node.launch
 
 it runs with the docker-Gazebo simulation env provided by ICUAS-2023 competition.
 Ros node is shown below:
-![icuas_rosgraph](https://user-images.githubusercontent.com/59171742/221510752-85ff7544-8dd2-4ff8-89fd-fc39fecf558c.png)
+<img src="https://user-images.githubusercontent.com/59171742/221510752-85ff7544-8dd2-4ff8-89fd-fc39fecf558c.png" width="800"
 
 And the running scene is shown in below
 ![icuas_palnner](https://user-images.githubusercontent.com/59171742/221510875-22b40571-8f39-46e9-916a-b2bbe3230f32.png)
