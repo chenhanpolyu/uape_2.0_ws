@@ -41,18 +41,20 @@ struct Config
     bool useC2Diffeo;
     bool if_debug;
     double optRelTol;
-    double sfck_td;
+    double yaw_replan_t;
     double trajVizWidth;
     Vector3d trajVizRGB;
     string routeStoragePath;
     string ellipsoidPath;
     Vector4d ellipsoidVizRGBA;
-    double max_yaw_range = 1.57;
+    int max_yaw_range_n = 10;
     double yaw_w = 0.4;
     double yaw_gap_max = 0.55;
     double horizon = 8.0;
     double yaw_reso = 0.175;
     double delta_t_yaw = 0.5;
+    double yaw_active_distance = 4.0;
+    bool applyUnknownAwareYaw = true;
     bool yawplan = false;
     inline void loadParameters(const ros::NodeHandle &nh_priv)
     // {       cout << "mk3" << endl;
@@ -61,11 +63,15 @@ struct Config
         ;
 
         nh_priv.getParam("Yawplan", yawplan);
-        nh_priv.getParam("MaxYawRange", max_yaw_range);
+        nh_priv.getParam("MaxYawRange", max_yaw_range_n);
         nh_priv.getParam("YawGapWeight", yaw_w);
         nh_priv.getParam("YawGapMax", yaw_gap_max);
         nh_priv.getParam("YawResolution", yaw_reso);
+        nh_priv.getParam("ApplyUnknownAwareYaw", applyUnknownAwareYaw);
         nh_priv.getParam("YawDeltaT", delta_t_yaw);
+        nh_priv.getParam("YawReplanTimeInterval", yaw_replan_t);
+        nh_priv.getParam("YawActiveDistance", yaw_active_distance);
+        
         nh_priv.getParam("ScaleSI", scaleSI);
         nh_priv.getParam("PolyhedronBox", vecPolyhedronBox);
         // cout << "mk4" << endl<< scaleSI << endl << vecPolyhedronBox[2] << endl << vecPolyhedronBox[0] <<endl;
@@ -84,7 +90,7 @@ struct Config
         nh_priv.getParam("VertHalfLen", vertHalfLen);
         nh_priv.getParam("SafeMargin", safeMargin);
         nh_priv.getParam("VelMax", velMax);
-        nh_priv.getParam("sfck_t", sfck_td);
+        
         nh_priv.getParam("ThrustAccMin", thrustAccMin);
         nh_priv.getParam("ThrustAccMax", thrustAccMax);
         nh_priv.getParam("BodyRateMax", bodyRateMax);
@@ -125,8 +131,6 @@ private:
     double Acc = 5.0;
     bool if_config = false; // if the waypoints and polyhedrons are updated
     Matrix3d iS, fS;        // xyz * pva        // intial & finial state
-    bool G = 9.8016;
-    
     bool last_traj_polyH_check;
     bool last_dyn_check_fail = false;
     bool yaw_timeout = true;

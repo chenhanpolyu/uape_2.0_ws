@@ -57,11 +57,14 @@ v_fov:                      58.0
 
 #Yaw planning
 Yawplan:        true
-MaxYawRange:    2.14 #3.14 #1.57
-YawGapWeight:   1.5
-YawGapMax:      0.37  #0.7
-YawResolution:  0.09  # 0.09 rad = 5 degree
-YawDeltaT:      0.2  #time intervel of samples on a traj to evaulate yaw score
+MaxYawRange:    15 # integer, the yaw range from (yaw0 - MaxYawRange*YawResolution) to (yaw0 + MaxYawRange*YawResolution) 
+YawGapWeight:   1.0
+YawGapMax:      0.6  #0.7
+YawResolution:  0.1  # 0.10 rad = 5.73 degree
+YawDeltaT:      0.1  #time intervel of samples on a traj to evaulate yaw score
+YawReplanTimeInterval: 0.6
+YawActiveDistance: 4.5
+ApplyUnknownAwareYaw: true
 #RouteStoragePath:           './data/office_easy_1.txt'
 EllipsoidVizRGBA:           [1.0, 0.0, 1.0, 1.0]
 #QuadrotorPath:              '/misc/data/quadcopter.dae'
