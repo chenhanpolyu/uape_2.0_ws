@@ -34,10 +34,10 @@
 #include <string>
 #include <unordered_map>
 // #include "grad_spline/sdf_map.h"
-#include "plan_env/edt_environment.h"
+#include "mlmap.h"
 #include <boost/functional/hash.hpp>
 #include <queue>
-namespace fast_planner {
+
 // #define REACH_HORIZON 1
 // #define REACH_END 2
 // #define NO_PATH 3
@@ -129,7 +129,7 @@ private:
   std::vector<NodePtr> path_nodes_;
 
   /* ---------- record data ---------- */
-  EDTEnvironment::Ptr edt_environment_;
+  mlmap::Ptr MLmap;
   bool has_path_ = false;
 
   /* ---------- parameter ---------- */
@@ -140,9 +140,9 @@ private:
   double tie_breaker_;
   /* map */
   double resolution_, inv_resolution_, time_resolution_, inv_time_resolution_;
-  Eigen::Vector3d origin_, map_size_3d_;
+  Eigen::Vector3d origin_vec;
   double time_origin_;
-
+  std::vector<double> origin_,map_size_3d_;
   /* helper */
   Eigen::Vector3i posToIndex(Eigen::Vector3d pt);
   int timeToIndex(double time);
@@ -157,7 +157,7 @@ public:
   Astar(){};
   ~Astar();
 
-  enum { REACH_END = 1, NO_PATH = 2 };
+  enum { REACH_END = 1, NO_PATH = 2, GOAL_OCC = 3, GOAL_CLOSE = 4};
 
   /* main API */
   void setParam(ros::NodeHandle& nh);
@@ -166,13 +166,13 @@ public:
   int search(Eigen::Vector3d start_pt, Eigen::Vector3d end_pt, bool dynamic = false,
              double time_start = -1.0);
 
-  void setEnvironment(const EDTEnvironment::Ptr& env);
+  void setEnvironment(const mlmap::Ptr map);
+  bool line_collide(const Eigen::Vector3d &p1, const Eigen::Vector3d &p2);
   std::vector<Eigen::Vector3d> getPath();
   std::vector<NodePtr> getVisitedNodes();
 
   typedef shared_ptr<Astar> Ptr;
 };
-
-}  // namespace fast_planner
+  // namespace fast_planner
 
 #endif

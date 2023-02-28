@@ -440,7 +440,7 @@ double KinodynamicAstar::estimateHeuristic(Eigen::VectorXd x1, Eigen::VectorXd x
   {
 
     if (MLmap->getOccupancy(x1.head(3)) == mlmap::UNKNOWN)
-    cost *= 5.5;
+    cost *= 1.5;
   }
 
   else if ((x1.head(3) - camera_vertex_.col(0)).dot((camera_vertex_.col(0) - camera_vertex_.col(1)).cross(camera_vertex_.col(0) - camera_vertex_.col(2))) < 0 || 
@@ -453,8 +453,8 @@ double KinodynamicAstar::estimateHeuristic(Eigen::VectorXd x1, Eigen::VectorXd x
     //  cout << "sample out of FOV"<<endl;
   }
 
-  // if (atan(abs(v0(2))/v0.head(2).norm()) > 0.524)  // half of the vertical fov, 1/6 * PI, 30 degree
-  //    cost *= 5;
+  if (atan(abs(v0(2))/v0.head(2).norm()) > 0.524)  // half of the vertical fov, 1/6 * PI, 30 degree
+     cost *= 5;
   return 1.0 * (1 + tie_breaker_) * cost;
 }
 
@@ -703,7 +703,7 @@ inline bool KinodynamicAstar::checkSafety(const Eigen::Vector3d &query_pt, const
 
   else
   {
-    return MLmap->getOccupancy(query_pt, S_r)!=mlmap::OCCUPIED && global_range_safe;
+    return MLmap->getInflateOccupancy(query_pt)!=mlmap::OCCUPIED && global_range_safe;
   }
 
   }

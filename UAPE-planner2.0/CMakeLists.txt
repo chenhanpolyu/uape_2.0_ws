@@ -184,6 +184,7 @@ src/call_states/input.cpp
 set(RFR 
 src/planner_fast.cpp
 src/path_searching/src/kinodynamic_astar.cpp
+src/path_searching/src/astar.cpp
 )
 
 add_executable(
@@ -194,3 +195,12 @@ traj_node
   ${RFR}
   ${ENV_OFFB})
 target_link_libraries(traj_node ${catkin_LIBRARIES})
+
+add_executable(
+traj_node_astar
+ # src/run_plannctrl.cpp 
+  src/run_plannctrl_astar_new.cpp
+  src/Tools.cpp
+  ${RFR}
+  ${ENV_OFFB})
+target_link_libraries(traj_node_astar ${catkin_LIBRARIES})

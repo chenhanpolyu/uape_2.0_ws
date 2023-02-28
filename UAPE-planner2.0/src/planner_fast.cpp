@@ -30,7 +30,7 @@ void TrajectoryGenerator_fast::replan_traj_noPolyH(mlmap::Ptr map, Vector3d &sta
       wPs.emplace_back(start);
       for (uint i = 1; i < waypoints.cols(); i++)
       {
-        if (((waypoints.col(i) - wPs.back()).norm() > 0.8) | i == waypoints.cols() - 1)
+        if (((waypoints.col(i) - wPs.back()).norm() > 0.8) || i == waypoints.cols() - 1)
           wPs.emplace_back(waypoints.col(i));
       }
     }
@@ -49,7 +49,7 @@ void TrajectoryGenerator_fast::replan_traj_noPolyH(mlmap::Ptr map, Vector3d &sta
   Traj_opt_noPolyH(map, iniState, finState, plan_t);
   if (config.yawplan && dynobs_pointer->dyn_number > 0)
   {
-    
+
     try
     {
       Yaw_plan(yaw_plan_tm);
@@ -65,52 +65,45 @@ void TrajectoryGenerator_fast::replan_traj_noPolyH(mlmap::Ptr map, Vector3d &sta
   }
 }
 
-
 void TrajectoryGenerator_fast::Yaw_plan(double plan_t)
 {
   // total_t = traj.getTotalDuration();
   yaw_plan.clear();
   if ((plan_t - plan_tm) > (total_t - config.delta_t_yaw - 1e-3))
-  return;
+    return;
   Matrix<double, 3, 5> camera_vertex;
   Vector3d sp_pos, sp_acc, sp_vel;
   Matrix3d Rota;
   Vector3d ct_center;
-  double thrust, t_base, score;
+  double t_base, score;
   Vector2d v1, v2;
-  double plan_duration = 2.0;
-  int rows = (min(total_t, plan_t - plan_tm + plan_duration) - (plan_t - plan_tm)) / config.delta_t_yaw + 1;
-  int cols = config.max_yaw_range / config.yaw_reso + 1;
+  // double plan_duration = 1.2;
+  int rows = (min(total_t, plan_t - plan_tm + config.yaw_replan_t + 0.1) - (plan_t - plan_tm)) / config.delta_t_yaw + 1;
+  int cols = config.max_yaw_range_n * 2 + 1;
   double v_psi;
   double M_yaw[rows][cols], M_vis_score[rows][cols], M_score[rows][cols];
 
-  // vector<vector<Matrix<double, 3, 5>>> M_camera_vertex;
-  // vector<Matrix<double, 3, 5>> fov_plan;
   int M_parent[rows][cols];
-  double sp_yaw1, sp_theta, sp_phi;
-  
-  // Matrix<double, rows, cols> M_yaw, M_yaw1, M_vis_score, M_score;
-  // Matrix<int, rows, cols> M_parent;
-  v1 << 1.0, 0.0;
+  double sp_yaw1;
+  // double thrust, sp_theta, sp_phi;
   int row = 0, col = 0;
+  double ti;
+  Eigen::AngleAxisd sp_rotation_vector;
   cout << "yaw plan begin" << endl;
 
-  for (double ti = plan_t - plan_tm; ti < min(total_t, plan_t - plan_tm + plan_duration); ti += config.delta_t_yaw)
+  for (row = 0; row < rows; row++)
   {
 
+    ti = plan_t - plan_tm + (row * config.delta_t_yaw);
     t_base = plan_tm - dynobs_pointer->time_stamp + ti;
     // yaw_plan_t.push_back(ti);
     sp_pos = traj.getPos(ti);
     sp_acc = traj.getAcc(ti);
     sp_vel = traj.getPos(total_t) - traj.getPos(ti); // traj.getVel(ti+0.1); //
-    sp_acc(2) += G;
-    thrust = sp_acc.norm();
+    sp_acc(2) += config.gravAcc;
+    // thrust = sp_acc.norm();
     v2 = sp_vel.head(2);
-    v_psi = acos(v1.dot(v2) / (v1.norm() * v2.norm()));
-    if (v2(1) < 0)
-    {
-      v_psi = -v_psi;
-    }
+    v_psi = cal_yaw_with_2dVec(v2);
     if (dynobs_pointer->dyn_number == 0)
     {
       yaw_plan.push_back(v_psi);
@@ -120,86 +113,93 @@ void TrajectoryGenerator_fast::Yaw_plan(double plan_t)
         // std::cout<<"No dynamic obs, use velocity yaw "<<std::endl;
         return;
       }
-      row++;
       continue;
     }
-    for (double sp_yaw = v_psi - config.max_yaw_range / 2; sp_yaw <= v_psi + config.max_yaw_range / 2; sp_yaw += config.yaw_reso)
+    // cout<<"normed sp acc vec: "<<sp_acc.normalized().transpose()<<" ti: "<<ti<<" raw traj acc: "<<sp_acc<<endl;
+    // cout<<"row: "<<row<<" delta t: "<<(row * config.delta_t_yaw)<<endl;
+    for (col = 0; col < cols; col++)
     {
       if (row == 0)
       {
         M_vis_score[row][col] = 1;
-        M_yaw[row][col] = drone_state.Euler(2); //
-        M_score[row][col] = 3;
+        M_yaw[row][col] = v_psi; //
+        M_score[row][col] = 1;
         continue;
       }
-
+      double sp_yaw = v_psi - (config.max_yaw_range_n - col) * config.yaw_reso;
       if (sp_yaw > M_PI)
         sp_yaw1 = sp_yaw - 2 * M_PI;
       else if (sp_yaw < -M_PI)
         sp_yaw1 = sp_yaw + 2 * M_PI;
       else
         sp_yaw1 = sp_yaw;
-      sp_theta = atan((sp_acc(0) + sp_acc(1) * tan(sp_yaw1)) / (sp_acc(2) * (cos(sp_yaw1) + sin(sp_yaw1) * tan(sp_yaw1))));
-      sp_phi = acos(sp_acc(2) / thrust / cos(sp_theta));
+      // sp_theta = atan((sp_acc(0) + sp_acc(1) * tan(sp_yaw1)) / (sp_acc(2) * (cos(sp_yaw1) + sin(sp_yaw1) * tan(sp_yaw1))));
+      // sp_phi = acos(sp_acc(2) / thrust / cos(sp_theta));
+      if (sp_acc(2) > 0)
+      {
+        if (sp_yaw1 > 0)
+          sp_rotation_vector = Eigen::AngleAxisd(sp_yaw1, sp_acc.normalized());  //sp_acc is the expected box-z axis direction 
+        else
+          sp_rotation_vector = Eigen::AngleAxisd(-sp_yaw1, sp_acc.normalized()).inverse();
+      }
+      else
+        sp_rotation_vector = Eigen::AngleAxisd(sp_yaw1, Eigen::Vector3d(0, 0, 1));
+      // sp_theta = 0;
+      // sp_phi = 0;
+      // sp_yaw1 = -sp_yaw1;
       // AngleAxisd rollAngle(AngleAxisd(sp_phi, Vector3d::UnitX()));
       // AngleAxisd pitchAngle(AngleAxisd(sp_theta, Vector3d::UnitY()));
       // AngleAxisd yawAngle(AngleAxisd(sp_yaw1, Vector3d::UnitZ()));
-      // Quaterniond quaternion = yawAngle * pitchAngle * rollAngle;
+      // Rota = yawAngle * pitchAngle * rollAngle;
+      Rota = sp_rotation_vector.matrix();
       // Rota = Quaternion2Rota(quaternion.normalized());
-      Rota = Quaternion2Rota(Euler2Quaternion(Vector3d(sp_phi, sp_theta, sp_yaw1)));
+      // Rota = Quaternion2Rota(Euler2Quaternion(Vector3d(sp_phi, sp_theta, sp_yaw1)));
       camera_vertex = (Rota * camera_vertex_b).array().colwise() + sp_pos.array();
       double score_vis = 0;
-      // bool traj_vel_vis = inFOV(camera_vertex, (traj.getVel(ti).normalized() * 0.5 + sp_pos));
-      //   score_traj_vel_vis = 0.0;
-      // else
-      //   score_traj_vel_vis = -5.0;
-      // std::cout<<"Got the sample Rota: "<<Rota<<"row,col:"<<row<<" "<<col<<" "<<rows<<" "<<cols<<std::endl;
+
       for (int i = 0; i < dynobs_pointer->dyn_number; i++)
       {
         ct_center = dynobs_pointer->centers[i] + t_base * dynobs_pointer->vels[i];
         if (inFOV(camera_vertex, ct_center))
         {
-          score_vis += 3 * max(0.0, double(4 - (ct_center - sp_pos).norm()));
-          // cout << "dynobs in fov, score_vis:  " <<score_vis<< " sp_yaw: "<<sp_yaw<<endl;
+          double yaw_diff_obs = abs(cal_yaw_with_2dVec((ct_center - sp_pos).head(2)) - sp_yaw1);
+          yaw_diff_obs = yaw_diff_obs > M_PI ? (2 * M_PI - yaw_diff_obs) : yaw_diff_obs;
+          double dis_gap2max = config.yaw_active_distance * config.yaw_active_distance - (ct_center - sp_pos).squaredNorm();
+          score_vis += 0.5 + 4 * (dis_gap2max > 0 ? (dis_gap2max +  3 * (M_PI_4 - yaw_diff_obs)) : 0.0);
+          // cout << "dynobs in fov, score_vis:  " << score_vis << " sp_yaw1: " << sp_yaw1 << "\nobs pos: " << ct_center.transpose()
+          //  << " obs pos - drone pos: " << (ct_center - sp_pos).transpose() << endl;
         }
       }
       // score_vis += score_traj_vel_vis;
       M_vis_score[row][col] = score_vis;
       M_yaw[row][col] = sp_yaw1; //
       // M_camera_vertex[row][col] = camera_vertex;
-      col += 1;
     }
-    col = 0;
-    row += 1;
   }
   // cout << "yaw plan begin" << endl;
   // std::cout<<"Got the vis score matrix: \n"<<M_vis_score<<std::endl;
   double max_total_score = 0;
-  int choosed_col = 0;
+  int choosed_col = config.max_yaw_range_n;
   for (row = 1; row < rows; row++)
   {
     for (col = 0; col < cols; col++)
     {
-      int parent = 0;
+      int parent = config.max_yaw_range_n;
       double tmp_score;
       score = 0;
 
       for (int col0 = 0; col0 < cols; col0++)
       {
-
-        double yaw_gap_raw = abs(M_yaw[row][col] - M_yaw[row - 1][col0]);
-        double yaw_gap = (yaw_gap_raw > M_PI) ? (2 * M_PI - yaw_gap_raw) : yaw_gap_raw;
-        // if (config.yaw_gap_max - yaw_gap < 0 && row > 1)
-        //   continue;
-
-        if ((M_vis_score[row][col]) == 0)
-        {
-          yaw_gap_raw = abs(M_yaw[row][col] - v_psi);
-          yaw_gap = (yaw_gap_raw > M_PI) ? (2 * M_PI - yaw_gap_raw) : yaw_gap_raw;
-        }
-        // cout << "yaw gap:" << yaw_gap << " "<<yaw_gap_raw<< endl;
-
-        tmp_score = M_vis_score[row][col] + M_score[row - 1][col0] + (config.yaw_gap_max - yaw_gap > 0) ? 0 : (config.yaw_gap_max - yaw_gap) * config.yaw_w;
+        // double yaw_gap_raw = abs(M_yaw[row][col] - M_yaw[row - 1][col0]);
+        // double yaw_gap = (yaw_gap_raw > M_PI) ? (2 * M_PI - yaw_gap_raw) : yaw_gap_raw;
+        double yaw_gap;
+        if (row == 1)
+          yaw_gap = abs(config.max_yaw_range_n - col) * config.yaw_reso;
+        else
+          yaw_gap = abs(col0 - col) * config.yaw_reso;
+        tmp_score = M_vis_score[row][col] + M_score[row - 1][col0] + ((config.yaw_gap_max - yaw_gap) * config.yaw_w);
+        //
+        // cout<<"tmp_score: "<<tmp_score<<" score: "<<score<<" Vis score: "<<M_vis_score[row][col]<<endl;
         if (tmp_score > score)
         {
           parent = col0;
@@ -219,14 +219,17 @@ void TrajectoryGenerator_fast::Yaw_plan(double plan_t)
       }
     }
   }
-  cout << "yaw plan finish--0" << endl;
-  cout << "choosed_col:" <<choosed_col;
+  // cout << "yaw plan finish--0" << endl;
+  // cout << "choosed_col:" << choosed_col;
   for (row = rows - 1; row > 0; row--)
   {
     yaw_plan.push_back(M_yaw[row][choosed_col]);
+
+    if (config.if_debug)
+    std::cout << "yaw planned: " << yaw_plan.back() << " vis score: " << M_vis_score[row][choosed_col] << " row: " << row << " col: " << choosed_col << std::endl;
     choosed_col = M_parent[row][choosed_col];
-    // if (config.if_debug)
-      std::cout << "yaw planned: " << yaw_plan.back() << " row:" << row << " choosed_col: " << choosed_col << " rows: " << rows << std::endl;
+    if (config.if_debug)
+    cout << " parent col: " << choosed_col << endl;
   }
   yaw_plan.push_back(M_yaw[row][choosed_col]);
   std::reverse(std::begin(yaw_plan), std::end(yaw_plan));
@@ -235,7 +238,11 @@ void TrajectoryGenerator_fast::Yaw_plan(double plan_t)
 
 inline bool TrajectoryGenerator_fast::inFOV(Matrix<double, 3, 5> camera_vertex, Vector3d ct_center)
 {
-  return !((ct_center.head(3) - camera_vertex.col(0)).dot((camera_vertex.col(0) - camera_vertex.col(1)).cross(camera_vertex.col(0) - camera_vertex.col(2))) < 0 || (ct_center.head(3) - camera_vertex.col(0)).dot((camera_vertex.col(0) - camera_vertex.col(2)).cross(camera_vertex.col(0) - camera_vertex.col(3))) < 0 || (ct_center.head(3) - camera_vertex.col(0)).dot((camera_vertex.col(0) - camera_vertex.col(3)).cross(camera_vertex.col(0) - camera_vertex.col(4))) < 0 || (ct_center.head(3) - camera_vertex.col(0)).dot((camera_vertex.col(0) - camera_vertex.col(4)).cross(camera_vertex.col(0) - camera_vertex.col(1))) < 0 || (ct_center.head(3) - camera_vertex.col(1)).dot((camera_vertex.col(1) - camera_vertex.col(4)).cross(camera_vertex.col(1) - camera_vertex.col(2))) < 0);
+  return ((ct_center - camera_vertex.col(0)).dot((camera_vertex.col(0) - camera_vertex.col(1)).cross(camera_vertex.col(0) - camera_vertex.col(2))) > 0 &&
+          (ct_center - camera_vertex.col(0)).dot((camera_vertex.col(0) - camera_vertex.col(2)).cross(camera_vertex.col(0) - camera_vertex.col(3))) > 0 &&
+          (ct_center - camera_vertex.col(0)).dot((camera_vertex.col(0) - camera_vertex.col(3)).cross(camera_vertex.col(0) - camera_vertex.col(4))) > 0 &&
+          (ct_center - camera_vertex.col(0)).dot((camera_vertex.col(0) - camera_vertex.col(4)).cross(camera_vertex.col(0) - camera_vertex.col(1))) > 0 &&
+          (ct_center - camera_vertex.col(1)).dot((camera_vertex.col(1) - camera_vertex.col(4)).cross(camera_vertex.col(1) - camera_vertex.col(2))) > 0);
 }
 
 inline double TrajectoryGenerator_fast::cal_yaw_with_2dVec(Vector2d p)
@@ -253,7 +260,7 @@ inline bool TrajectoryGenerator_fast::HaveToCheckUnkownPoint(double traj_t_start
 {
   double speed = traj.getVel(traj_t_start).norm();
   Vector3d pos0 = traj.getPos(traj_t_start);
-  for (double dt = 0.2; dt < speed / config.horizontalAccMax + 0.5; dt += 0.1)
+  for (double dt = 0.1; dt < speed / config.horizontalAccMax + 0.3; dt += 0.1)
   {
     Vector3d pos = traj.getPos(traj_t_start + dt);
     if (map->getOccupancy(pos) == mlmap::UNKNOWN)
@@ -266,14 +273,16 @@ inline bool TrajectoryGenerator_fast::HaveToCheckUnkownPoint(double traj_t_start
 }
 Vector2d TrajectoryGenerator_fast::getYaw(double t, mlmap::Ptr map)
 {
-  uint indx = (t - yaw_plan_tm) / config.delta_t_yaw;
+  uint indx = static_cast<uint>(max(0.0, (t - yaw_plan_tm) / config.delta_t_yaw));
+  // size_t indx = (t - yaw_plan_tm) / config.delta_t_yaw;
   Vector2d desire_yaw; // yaw,yaw_rate
   Vector2d first_unkown_point_traj;
-  if (HaveToCheckUnkownPoint(t - plan_tm, first_unkown_point_traj, map))
+  if (config.applyUnknownAwareYaw && HaveToCheckUnkownPoint(t - plan_tm, first_unkown_point_traj, map))
   {
-    // cout << "Turn camera to the unkown area1" << endl;
+
     desire_yaw(0) = cal_yaw_with_2dVec(first_unkown_point_traj);
     desire_yaw(1) = 0.0;
+    cout << "Turn camera to the unkown area: " << desire_yaw(0) << endl;
     return desire_yaw;
   }
   double yaw_gap;
@@ -283,7 +292,12 @@ Vector2d TrajectoryGenerator_fast::getYaw(double t, mlmap::Ptr map)
 
   // std::cout<<"Set yaw begin "<< indx<<" "<<yaw_plan.size()<<"\n"
   // <<((yaw_plan.size()>0)?yaw_plan.back():0)<<" "<<dynobs_pointer->dyn_number<<std::endl;
-  if ((indx + 2) > yaw_plan.size() || !config.yawplan || dynobs_pointer->dyn_number == 0)
+  if ((t - plan_tm) > total_t - 0.1) //close to end
+  {
+    desire_yaw(0) = drone_state.Euler(2);
+    desire_yaw(1) = 0;
+  }
+  else if ((indx + 2) > yaw_plan.size() || !config.yawplan || dynobs_pointer->dyn_number == 0 || yaw_timeout)
   {
     // yaw_timeout = true;
     desire_yaw(0) = v_psi;
@@ -293,17 +307,23 @@ Vector2d TrajectoryGenerator_fast::getYaw(double t, mlmap::Ptr map)
   {
     try
     {
-
+      // std::cout << "Begin to set yaw for dynamic obs! inx: " << indx << endl;
       yaw_gap = (yaw_plan[indx + 1] - yaw_plan[indx]);
       if (abs(yaw_gap) > M_PI)
       {
-        yaw_gap = copysign((2 * M_PI - abs(yaw_gap)), drone_state.Euler(2));
+        // cout << "sign change! " << yaw_gap << " drone_state.Euler(2): " << drone_state.Euler(2) << " yaw_plan[indx + 1]: "
+        //      << yaw_plan[indx + 1] << " yaw_plan[indx]: " << yaw_plan[indx] << endl;
+        yaw_gap = copysign((2 * M_PI - abs(yaw_gap)), yaw_plan[indx]);
       }
       desire_yaw(0) = yaw_plan[indx] + ((t - yaw_plan_tm) - indx * config.delta_t_yaw) / config.delta_t_yaw * yaw_gap;
+      // desire_yaw(0) = yaw_plan[indx+1];
       desire_yaw(1) = 0;
       if (abs(desire_yaw(0)) > M_PI)
+      {
+        desire_yaw(0) = copysign((2 * M_PI - abs(desire_yaw(0))), -desire_yaw(0));
         cout << "yaw out range! " << desire_yaw(0) << endl;
-      // std::cout << "Set yaw-2:\n"
+      }
+      // std::cout << "Set yaw for dynamic obs! " << desire_yaw(0) << endl;
       // << desire_yaw(0) << " " << yaw_plan[indx + 1] << " " << yaw_plan[indx] << std::endl;
     }
     catch (...)
@@ -371,7 +391,6 @@ Vector2d TrajectoryGenerator_fast::getYaw(double t)
   return desire_yaw;
 }
 
-
 bool TrajectoryGenerator_fast::inGlobalBound(const Vector3d &pos)
 {
   return (pos(0) > config.global_bound(0, 0) &&
@@ -402,16 +421,16 @@ bool TrajectoryGenerator_fast::check_traj_safe(const double plan_t, Vector3d &st
   {
     if_time_out = false;
   }
-  
-  if (start_t - yaw_plan_tm > 0.2)
-  yaw_timeout = true;
+
+  if (start_t - yaw_plan_tm > config.yaw_replan_t)
+    yaw_timeout = true;
 
   if (config.yawplan && dynobs_pointer->dyn_number > 0 && yaw_timeout)
   {
-    
+
     Yaw_plan(yaw_plan_tm);
     yaw_plan_tm = ros::Time::now().toSec();
-    cout<<" Yaw plan time (ms): "<<(yaw_plan_tm - start_t) * 1000 <<endl;
+    cout << " Yaw plan time (ms): " << (yaw_plan_tm - start_t) * 1000 << endl;
     yaw_timeout = false;
   }
   if ((traj.getPos(total_t) - wPs.back()).norm() > config.horizon * 0.3)
@@ -438,7 +457,7 @@ bool TrajectoryGenerator_fast::check_traj_safe(const double plan_t, Vector3d &st
       return false;
     }
 
-    if (map->getOccupancy(pos, config.safeMargin - 0.1) == mlmap::OCCUPIED || !inGlobalBound(pos))
+    if (map->getInflateOccupancy(pos) == mlmap::OCCUPIED || !inGlobalBound(pos))
     {
       cout << "map check to be collide or out side the global box!  " << pos.transpose() << endl; // dynobs_pointer->ballvel[0]<<endl
       return false;
@@ -448,7 +467,6 @@ bool TrajectoryGenerator_fast::check_traj_safe(const double plan_t, Vector3d &st
   // cout << "old traj is safe for dyn obs, and all in new corridor! " << dynobs_pointer->dyn_number << " " << ros::Time::now().toSec() - dynobs_pointer->time_stamp << endl;
   return true;
 }
-
 
 inline bool TrajectoryGenerator_fast::dyn_safe_check(Vector3d pt, double check_t)
 // { return true; // for rosbag tests!!!
@@ -496,7 +514,7 @@ void TrajectoryGenerator_fast::Traj_opt_noPolyH(mlmap::Ptr map, const MatrixXd &
   // Trajectory traj;
   //  cout << "received dynamic obs number:" << dynobs_pointer->dyn_number << endl << dynobs_pointer<<endl<<"dyn_timestamp:"<<dynobs_pointer->time_stamp<<endl<<plan_t<<endl;
   ROS_INFO("Begin to optimize the traj~");
-  
+
   // TODO
   if (!MINCOOpt.setup(config.rho, config.totalT, iniState, finState, map, wPs, config.qdIntervals,
                       config.safeMargin, (config.velMax < 2.0 && last_dyn_check_fail) ? 2.0 : config.velMax, config.thrustAccMin, config.thrustAccMax,
@@ -611,7 +629,6 @@ VectorXd TrajectoryGenerator_fast::allocateTime(const MatrixXd &wayPs,
 
   return durations;
 }
-
 
 void TrajectoryGenerator_fast::get_desire(double timee, Vector3d &p_d, Vector3d &v_d, Vector3d &a_d, Vector3d &p_d_yaw)
 {

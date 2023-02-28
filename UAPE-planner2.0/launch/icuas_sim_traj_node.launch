@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>    
   <param name="/mlmapping_configfile" type="string" value="$(find mlmapping)/launch/config/config_sim.yaml"/>
-  <node pkg="uape_planner_2" type="traj_node" name="traj_node" output="screen">
+  <node pkg="uape_planner_2" type="traj_node_astar" name="traj_node_astar" output="screen">
    
       <rosparam file="$(find uape_planner_2)/launch/icuas_planning_params_sim.yaml" command="load" />
       <remap from="/planner/odom"        to="/red/odometry"/>
